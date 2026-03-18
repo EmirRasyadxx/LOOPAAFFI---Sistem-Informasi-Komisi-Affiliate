@@ -42,7 +42,7 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 
 | Login Page | Dashboard | Core Feature |
 | :---: | :---: | :---: |
-| <img src="asset/LOOPAFFI/Background+Border.png" width="100%"><br>**Login & Register** | <img src="asset/LOOPAFFI/DASHBOARD%20ADMIN.png" width="100%"><br>**Dashboard Admin** | <img src="asset/LOOPAFFI/SALES.png" width="100%"><br>**Manajemen Sales (Admin)** |
+| <img src="asset/LOOPAFFI/LOGIN SIGN IN.png" width="100%"><br>**Login & Register** | <img src="asset/LOOPAFFI/DASHBOARD%20ADMIN.png" width="100%"><br>**Dashboard Admin** | <img src="asset/LOOPAFFI/SALES.png" width="100%"><br>**Manajemen Sales (Admin)** |
 | - | <img src="asset/LOOPAFFI/DASHBOARD%20-%20USER%20AFFILIATE.png" width="100%"><br>**Dashboard User** | <img src="asset/LOOPAFFI/Sales%20User.png" width="100%"><br>**Data Sales (User)** |
 | - | - | <img src="asset/LOOPAFFI/COMISSION.png" width="100%"><br>**Komisi** |
 | - | - | <img src="asset/LOOPAFFI/payment.png" width="100%"><br>**Pembayaran (Admin)** |
