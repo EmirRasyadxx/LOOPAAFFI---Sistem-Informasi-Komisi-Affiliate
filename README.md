@@ -22,41 +22,53 @@ Tujuan utama dari pengembangan sistem ini adalah meningkatkan efisiensi operasio
 
 ---
 
-## Data Flow Diagram
+## 📊 Perancangan Sistem (DFD)
 
 ### DFD Level 0
 
-![DFD Level 0](assets/dfd-level-0.png)
+<img src="asset/assets:dfd-level-0.png" alt="DFD Level 0" width="800">
+
+*Diagram Konteks yang menunjukkan aliran data global.*
 
 ### DFD Level 1
 
-![DFD Level 1](assets/dfd-level-1.png)
+<img src="asset/assets:dfd-level-1.png" alt="DFD Level 1" width="800">
 
 ---
 
-## Mockup Platform
+## 🎨 Mockup Antarmuka
 
-Mockup antarmuka **LoopAffi** dibagi ke dalam tiga bagian utama untuk menggambarkan alur penggunaan sistem, mulai dari proses autentikasi hingga fitur inti yang tersedia pada platform.
+Rancangan UI aplikasi yang berfokus pada pengalaman pengguna. Mockup antarmuka **LoopAffi** dibagi ke dalam tiga bagian utama untuk menggambarkan alur penggunaan sistem, mulai dari proses autentikasi hingga fitur inti yang tersedia pada platform.
 
+| Login Page | Dashboard | Core Feature |
+| :---: | :---: | :---: |
+| - | <img src="asset/LOOPAFFI/DASHBOARD%20ADMIN.png" width="300"><br>**Dashboard Admin** | <img src="asset/LOOPAFFI/SALES.png" width="300"><br>**Manajemen Sales (Admin)** |
+| - | <img src="asset/LOOPAFFI/DASHBOARD%20-%20USER%20AFFILIATE.png" width="300"><br>**Dashboard User** | <img src="asset/LOOPAFFI/Sales%20User.png" width="300"><br>**Data Sales (User)** |
+| - | - | <img src="asset/LOOPAFFI/COMISSION.png" width="300"><br>**Komisi** |
+| - | - | <img src="asset/LOOPAFFI/payment.png" width="300"><br>**Pembayaran (Admin)** |
+| - | - | <img src="asset/LOOPAFFI/Payments%20User.png" width="300"><br>**Pembayaran (User)** |
+| - | - | <img src="asset/LOOPAFFI/ini%20report.png" width="300"><br>**Report / Laporan** |
 
+*(Catatan: Bagian Login dikosongkan dengan tanda "-" karena berdasarkan daftar file di repository, file mockup login tidak tersedia)*
 
 ---
 
 ## Tech Stack
 
-
 - Frontend : Reactjs
 - Backend : GoLang
 - Database : PostgreSQL
 
-
+---
 
 ## Instalasi
 
-
-
-
 ```bash
-1. git clone https://github.com/username/loopAffi.git
-2. npm install
-3. npm run dev
+# 1. Clone repository
+git clone [https://github.com/username/loopAffi.git](https://github.com/username/loopAffi.git)
+
+# 2. Install dependencies
+npm install
+
+# 3. Jalankan server
+npm run dev
