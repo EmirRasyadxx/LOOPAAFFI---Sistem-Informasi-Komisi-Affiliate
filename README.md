@@ -26,7 +26,7 @@ Tujuan utama dari pengembangan sistem ini adalah meningkatkan efisiensi operasio
 
 ### DFD Level 0
 
-<img src="asset/assets:dfd-level-0.png" alt="DFD Level 0" width="100%">
+![988c9c46-a8f9-4595-bd3d-0237ae742abe](https://github.com/user-attachments/assets/24ecd3f9-cf31-4389-92a4-0922112a1d03)
 
 *Diagram Konteks yang menunjukkan aliran data global.*
 
