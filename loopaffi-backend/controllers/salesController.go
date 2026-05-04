@@ -3,29 +3,28 @@ package controllers
 import (
 	"backend/config"
 	"backend/models"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Struct khusus (DTO) untuk menangkap data JSON yang dikirim Frontend/Postman
+// ==================== DTOs ====================
+
+// Struct khusus (DTO) untuk menangkap data JSON yang dikirim Frontend
+// Sesuai format frontend: { date, amount, affiliateId, status }
 type SaleInput struct {
-	ID           string          `json:"id_sale"`
-	UserID       string          `json:"id_user"`
-	TglPenjualan time.Time       `json:"tgl_penjualan"`
-	StatusSale   string          `json:"status_sale"`
-	Items        []SaleItemInput `json:"items"` // Array untuk menampung banyak barang
+	Date        string  `json:"date"`
+	Amount      float64 `json:"amount" binding:"required"`
+	AffiliateID string  `json:"affiliateId" binding:"required"`
+	Status      string  `json:"status"`
 }
 
-type SaleItemInput struct {
-	ID          string  `json:"id_sale_item"`
-	ProductID   string  `json:"id_product"`
-	Qty         int     `json:"qty"`
-	HargaSatuan float64 `json:"harga_satuan"`
-}
+// ==================== Handlers ====================
 
-// Fungsi kelolaPenjualan() sesuai DPPL
+// POST /api/sales — Catat penjualan baru (sesuai frontend admin/sales)
+// Implementasi Use Case #1: Input Data Penjualan (Proses pembuatan objek Sale dan hitungTotal())
 func CreateSale(c *gin.Context) {
 	var input SaleInput
 
@@ -35,45 +34,128 @@ func CreateSale(c *gin.Context) {
 		return
 	}
 
-	// 2. Buat objek Sale sesuai Model Entity kita
-	sale := models.Sale{
-		ID:           input.ID,
-		UserID:       input.UserID,
-		TglPenjualan: input.TglPenjualan,
-		StatusSale:   input.StatusSale,
-	}
-
-	// 3. Siapkan keranjang untuk menampung SaleItems
-	var saleItems []models.SaleItem
-
-	// 4. Hitung Subtotal secara dinamis untuk setiap item yang dibeli
-	for _, itemInput := range input.Items {
-		// Logika perhitungan: Subtotal = Qty * HargaSatuan
-		kalkulasiSubtotal := float64(itemInput.Qty) * itemInput.HargaSatuan
-
-		item := models.SaleItem{
-			ID:          itemInput.ID,
-			SaleID:      sale.ID, // Sambungkan Foreign Key ke ID Penjualan
-			ProductID:   itemInput.ProductID,
-			Qty:         itemInput.Qty,
-			HargaSatuan: itemInput.HargaSatuan,
-			Subtotal:    kalkulasiSubtotal, // Hasil kalkulasi dimasukkan ke sini
+	// 2. Parse tanggal, default ke sekarang jika kosong
+	tglPenjualan := time.Now()
+	if input.Date != "" {
+		parsed, err := time.Parse(time.RFC3339, input.Date)
+		if err == nil {
+			tglPenjualan = parsed
 		}
-		saleItems = append(saleItems, item)
 	}
 
-	// Gabungkan items ke dalam objek Sale
-	sale.SaleItems = saleItems
+	// 3. Default status
+	status := input.Status
+	if status == "" {
+		status = "completed"
+	}
 
-	// 5. Simpan Data Penjualan (Otomatis menyimpan ke tabel sales dan sale_items)
+	// 4. Generate ID otomatis
+	saleID := fmt.Sprintf("SALE-%s", time.Now().Format("20060102150405"))
+
+	// 5. Buat objek Sale sesuai Model Entity
+	sale := models.Sale{
+		ID:           saleID,
+		UserID:       input.AffiliateID,
+		TglPenjualan: tglPenjualan,
+		TotalAmount:  input.Amount,
+		StatusSale:   status,
+	}
+
+	// 6. Simpan Data Penjualan
 	if err := config.DB.Create(&sale).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan data penjualan!"})
 		return
 	}
 
-	// 6. Kembalikan Response Sukses
+	// 7. Otomatis hitung dan buat komisi
+	var setting models.CommissionSetting
+	if err := config.DB.Where("is_active = ?", true).First(&setting).Error; err == nil {
+		// Hitung komisi
+		jumlahKomisi := sale.TotalAmount * (setting.PersentaseKomisi / 100)
+		commissionID := fmt.Sprintf("COM-%s", time.Now().Format("20060102150405"))
+
+		commission := models.Commission{
+			ID:                  commissionID,
+			SaleID:              sale.ID,
+			AffiliateID:         sale.UserID,
+			CommissionSettingID: setting.ID,
+			JumlahKomisi:        jumlahKomisi,
+			TglHitung:           time.Now(),
+			StatusKomisi:        "Pending",
+		}
+		config.DB.Create(&commission)
+
+		// Buat payment record (pending)
+		paymentID := fmt.Sprintf("PAY-%s", time.Now().Format("20060102150405"))
+		payment := models.Payment{
+			ID:            paymentID,
+			CommissionID:  commissionID,
+			AffiliateID:   sale.UserID,
+			JumlahBayar:   jumlahKomisi,
+			TglPembayaran: time.Now(),
+			StatusBayar:   "pending",
+		}
+		config.DB.Create(&payment)
+
+		// Buat notifikasi untuk affiliate
+		notifID := fmt.Sprintf("NOTIF-%s", time.Now().Format("20060102150405"))
+		notification := models.Notification{
+			ID:     notifID,
+			UserID: sale.UserID,
+			Judul:  "Penjualan Baru Tercatat",
+			Pesan:  fmt.Sprintf("New sale recorded! You earned Rp %s", formatRupiah(jumlahKomisi)),
+			IsRead: false,
+		}
+		config.DB.Create(&notification)
+	}
+
+	// 8. Kembalikan Response dalam format yang sama dengan frontend
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Data penjualan berhasil diinput!",
 		"data":    sale,
 	})
+}
+
+// GET /api/sales — Ambil semua data penjualan
+func GetSales(c *gin.Context) {
+	var sales []models.Sale
+
+	// Query parameter optional: affiliateId untuk filter per affiliate
+	affiliateID := c.Query("affiliateId")
+
+	query := config.DB.Order("tgl_penjualan DESC")
+	if affiliateID != "" {
+		query = query.Where("id_user = ?", affiliateID)
+	}
+
+	if err := query.Find(&sales).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data penjualan!"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Data penjualan berhasil diambil!",
+		"data":    sales,
+	})
+}
+
+// GET /api/sales/:id — Ambil detail penjualan by ID
+func GetSaleByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var sale models.Sale
+	if err := config.DB.Preload("SaleItems").Preload("User").First(&sale, "id_sale = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Data penjualan tidak ditemukan!"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Data penjualan berhasil diambil!",
+		"data":    sale,
+	})
+}
+
+// Helper format rupiah untuk notifikasi
+func formatRupiah(amount float64) string {
+	return fmt.Sprintf("%.0f", amount)
 }

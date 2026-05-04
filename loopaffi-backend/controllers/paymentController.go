@@ -10,14 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DTO untuk menangkap request dari Postman
 type PaymentInput struct {
 	ID              string `json:"id_payment"`
 	CommissionID    string `json:"id_commission"`
 	PaymentMethodID string `json:"id_payment_method"`
 }
 
-// Fungsi prosesPembayaran()
+// Implementasi Use Case #3: Kelola Pembayaran
 func ProsesPembayaran(c *gin.Context) {
 	var input PaymentInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -25,78 +24,101 @@ func ProsesPembayaran(c *gin.Context) {
 		return
 	}
 
-	// 1. Tarik data Komisi (Preload Sale supaya kita tahu ini komisi punya User/Affiliate siapa)
 	var commission models.Commission
 	if err := config.DB.Preload("Sale").First(&commission, "id_commission = ?", input.CommissionID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Data komisi tidak ditemukan!"})
 		return
 	}
 
-	// Validasi kalau sudah lunas tidak bisa dibayar dua kali
 	if commission.StatusKomisi == "Lunas" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Komisi ini sudah dibayar lunas!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Komisi ini sudah dibayar!"})
 		return
 	}
 
-	// 2. Dapatkan Metode Pembayaran (getMetode)
-	var payMethod models.PaymentMethod
-	if err := config.DB.First(&payMethod, "id_payment_method = ?", input.PaymentMethodID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Metode pembayaran tidak valid/tidak ditemukan!"})
-		return
-	}
-
-	// === MULAI DATABASE TRANSACTION ===
 	tx := config.DB.Begin()
 
-	// 3. prosesPencairan() -> Kita catat ke tabel payments
+	paymentID := input.ID
+	if paymentID == "" {
+		paymentID = fmt.Sprintf("PAY-%s", time.Now().Format("20060102150405"))
+	}
+
 	payment := models.Payment{
-		ID:              input.ID,
-		CommissionID:    commission.ID,
-		PaymentMethodID: payMethod.ID,
-		JumlahBayar:     commission.JumlahKomisi, // Angkanya ambil langsung dari komisi
-		TglPembayaran:   time.Now(),
-		StatusBayar:     "Berhasil", 
+		ID: paymentID, CommissionID: commission.ID, AffiliateID: commission.AffiliateID,
+		PaymentMethodID: input.PaymentMethodID, JumlahBayar: commission.JumlahKomisi,
+		TglPembayaran: time.Now(), StatusBayar: "Lunas",
 	}
 	if err := tx.Create(&payment).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan data pembayaran!"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pembayaran!"})
 		return
 	}
 
-	// 4. updateStatus("Lunas") -> Perbarui status komisi
 	commission.StatusKomisi = "Lunas"
 	if err := tx.Save(&commission).Error; err != nil {
 		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update status komisi!"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update komisi!"})
 		return
 	}
 
-	// 5. sendNotif() -> Generate Notifikasi untuk Affiliate
-	notification := models.Notification{
-		ID:     "NOTIF-" + time.Now().Format("20060102150405"), // Generate ID otomatis pakai format waktu
-		UserID: commission.Sale.UserID,                         // Kirim ke Affiliate yang melakukan penjualan
-		Judul:  "Pembayaran Komisi Berhasil Lunas",
-		Pesan:  fmt.Sprintf("Komisi Anda sebesar %.2f telah dicairkan melalui %s.", commission.JumlahKomisi, payMethod.NamaMetode),
+	affID := commission.AffiliateID
+	if affID == "" {
+		affID = commission.Sale.UserID
+	}
+	// Trigger pembuatan data Notifikasi (representasi dari fungsi sendNotif())
+	notif := models.Notification{
+		ID: fmt.Sprintf("NOTIF-%s", time.Now().Format("20060102150405")),
+		UserID: affID, Judul: "Pembayaran Komisi Berhasil",
+		Pesan: fmt.Sprintf("Komisi sebesar Rp %.0f telah dicairkan.", commission.JumlahKomisi),
 		IsRead: false,
 	}
-	if err := tx.Create(&notification).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat notifikasi!"})
+	tx.Create(&notif)
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pembayaran berhasil!", "data": payment})
+}
+
+func GetPayments(c *gin.Context) {
+	var payments []models.Payment
+	affiliateID := c.Query("affiliateId")
+	query := config.DB.Order("tgl_pembayaran DESC")
+	if affiliateID != "" {
+		query = query.Where("id_affiliate = ?", affiliateID)
+	}
+	if err := query.Find(&payments).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data!"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "OK", "data": payments})
+}
+
+func MarkPaymentPaid(c *gin.Context) {
+	id := c.Param("id")
+	var payment models.Payment
+	if err := config.DB.First(&payment, "id_payment = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pembayaran tidak ditemukan!"})
+		return
+	}
+	if payment.StatusBayar == "Lunas" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Sudah lunas!"})
 		return
 	}
 
-	// === COMMIT TRANSACTION (Simpan permanen semua perubahannya) ===
+	tx := config.DB.Begin()
+	payment.StatusBayar = "Lunas"
+	payment.TglPembayaran = time.Now()
+	tx.Save(&payment)
+
+	if payment.CommissionID != "" {
+		tx.Model(&models.Commission{}).Where("id_commission = ?", payment.CommissionID).Update("status_komisi", "Lunas")
+	}
+	if payment.AffiliateID != "" {
+		n := models.Notification{
+			ID: fmt.Sprintf("NOTIF-%s", time.Now().Format("20060102150405")),
+			UserID: payment.AffiliateID, Judul: "Pembayaran Lunas",
+			Pesan: fmt.Sprintf("Pembayaran Rp %.0f lunas.", payment.JumlahBayar), IsRead: false,
+		}
+		tx.Create(&n)
+	}
 	tx.Commit()
-
-	// 6. generateBuktiBayar()
-	// Untuk saat ini kita return sebagai string nama file. (Integrasi ke Library PDF asli biasanya dikerjakan paling akhir).
-	fileBukti := fmt.Sprintf("bukti_bayar_%s.pdf", payment.ID)
-
-	// Kembalikan Response
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Pembayaran komisi berhasil diproses dan notifikasi telah dikirim!",
-		"data_payment": payment,
-		"bukti_bayar":  fileBukti,
-		"notifikasi":   notification,
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Pembayaran ditandai lunas!", "data": payment})
 }

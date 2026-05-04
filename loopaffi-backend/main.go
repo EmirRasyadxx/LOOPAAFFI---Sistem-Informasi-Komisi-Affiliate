@@ -40,10 +40,25 @@ func main() {
 	// 3. Setup Framework Gin
 	router := gin.Default()
 
-	// 4. Daftarkan Routes API (Endpoint untuk Postman/Frontend)
+	// 4. CORS Middleware — agar frontend Next.js bisa akses API
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
+	// 5. Daftarkan Routes API (Endpoint untuk Postman/Frontend)
 	routes.SetupRoutes(router)
 
-	// 5. Jalankan Server (Default di localhost:8080)
-	fmt.Println("Server backend LoopAffi siap digunakan!")
-	router.Run()
+	// 6. Jalankan Server (Default di localhost:8080)
+	fmt.Println("Server backend LoopAffi siap digunakan di http://localhost:8080")
+	router.Run(":8080")
 }

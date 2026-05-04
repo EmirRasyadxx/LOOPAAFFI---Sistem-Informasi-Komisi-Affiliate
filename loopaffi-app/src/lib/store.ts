@@ -44,6 +44,7 @@ export interface Notification {
 
 interface AppState {
     currentUser: User | null;
+    token: string | null;
     users: User[];
     sales: Sale[];
     commissions: Commission[];
@@ -51,7 +52,7 @@ interface AppState {
     notifications: Notification[];
     globalCommissionRate: number;
     darkMode: boolean;
-    login: (user: User) => void;
+    login: (user: User, token: string) => void;
     logout: () => void;
     addSale: (sale: Omit<Sale, 'id'>) => void;
     markPaymentPaid: (paymentId: string) => void;
@@ -70,6 +71,7 @@ export const useAppStore = create<AppState>()(
     persist(
         (set, get) => ({
             currentUser: null,
+            token: null,
             users: mockUsers,
             sales: [],
             commissions: [],
@@ -77,8 +79,8 @@ export const useAppStore = create<AppState>()(
             notifications: [],
             globalCommissionRate: 0.1, // 10%
             darkMode: false,
-            login: (user) => set({ currentUser: user }),
-            logout: () => set({ currentUser: null }),
+            login: (user, token) => set({ currentUser: user, token }),
+            logout: () => set({ currentUser: null, token: null }),
             toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
             convertAllToIDR: () => {
                 set((state) => {
