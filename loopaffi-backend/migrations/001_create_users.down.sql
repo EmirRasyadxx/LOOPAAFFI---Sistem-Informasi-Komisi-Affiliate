@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS affiliates;
+DROP TABLE IF EXISTS users;

@@ -19,7 +19,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!mounted) return;
 
-        const isAuthRoute = pathname === "/login";
+        const isAuthRoute = pathname === "/login" || pathname === "/register";
 
         if (!currentUser && !isAuthRoute) {
             router.push("/login");
@@ -45,7 +45,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
 
     if (!mounted) return null;
 
-    const isAuthRoute = pathname === "/login";
+    const isAuthRoute = pathname === "/login" || pathname === "/register";
 
     if (isAuthRoute) {
         return <>{children}</>;

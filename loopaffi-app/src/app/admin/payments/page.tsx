@@ -1,9 +1,9 @@
 "use client";
 
-import { useAppStore, mockUsers } from "@/lib/store";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { formatIDR } from "@/lib/utils";
+import { fetchAdminPayments, fetchAdminUsers, markPaymentPaid as apiMarkPaymentPaid, DBPayment, DBUser } from "@/lib/api";
 import {
     Table,
     TableBody,
@@ -12,11 +12,60 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
 
 export default function AdminPaymentsPage() {
-    const { payments, markPaymentPaid } = useAppStore();
+    const [payments, setPayments] = useState<DBPayment[]>([]);
+    const [users, setUsers] = useState<DBUser[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [markingId, setMarkingId] = useState<string | null>(null);
 
-    const getAffiliateName = (id: string) => mockUsers.find((u) => u.id === id)?.name ?? "Unknown";
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const [paymentsData, usersData] = await Promise.all([
+                fetchAdminPayments(),
+                fetchAdminUsers(),
+            ]);
+            setPayments(paymentsData);
+            setUsers(usersData);
+        } catch (err) {
+            console.error("Gagal memuat data pembayaran:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const getAffiliateName = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
+
+    const handleMarkPaid = async (paymentId: string) => {
+        setMarkingId(paymentId);
+        try {
+            await apiMarkPaymentPaid(paymentId);
+            // Reload data setelah update
+            await loadData();
+        } catch (err: any) {
+            console.error("Gagal menandai pembayaran:", err);
+            alert(err.message || "Gagal memperbarui status pembayaran");
+        } finally {
+            setMarkingId(null);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="max-w-6xl mx-auto flex items-center justify-center py-20">
+                <div className="flex items-center gap-2 text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Memuat data pembayaran...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
@@ -47,7 +96,7 @@ export default function AdminPaymentsPage() {
                                 <TableRow key={payment.id}>
                                     <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
                                     <TableCell className="font-mono text-slate-500 text-xs">{payment.id}</TableCell>
-                                    <TableCell className="font-medium">{getAffiliateName(payment.affiliateId)}</TableCell>
+                                    <TableCell className="font-medium">{getAffiliateName(payment.affiliate_id)}</TableCell>
                                     <TableCell className="font-bold text-slate-900">{formatIDR(payment.amount)}</TableCell>
                                     <TableCell>
                                         {payment.status === "paid" ? (
@@ -65,8 +114,12 @@ export default function AdminPaymentsPage() {
                                             <Button
                                                 size="sm"
                                                 className="bg-red-600 hover:bg-red-700 text-white h-8 text-xs"
-                                                onClick={() => markPaymentPaid(payment.id)}
+                                                onClick={() => handleMarkPaid(payment.id)}
+                                                disabled={markingId === payment.id}
                                             >
+                                                {markingId === payment.id ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                                ) : null}
                                                 Tandai Lunas
                                             </Button>
                                         )}

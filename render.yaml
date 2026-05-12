@@ -1,0 +1,55 @@
+databases:
+  - name: loopaffi-db
+    databaseName: loopaffi
+    user: loopaffi_user
+    plan: free
+
+services:
+  - type: web
+    name: loopaffi-backend
+    env: go
+    rootDir: loopaffi-backend
+    buildCommand: go build -o server ./cmd/server/main.go
+    startCommand: ./server
+    plan: free
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: loopaffi-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: loopaffi-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: loopaffi-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: loopaffi-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: loopaffi-db
+          property: database
+      - key: DB_SSLMODE
+        value: require
+      - key: APP_PORT
+        value: "10000"
+      - key: JWT_SECRET
+        generateValue: true
+
+  - type: web
+    name: loopaffi-frontend
+    env: node
+    rootDir: loopaffi-app
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: loopaffi-backend
+          envVarKey: RENDER_EXTERNAL_URL

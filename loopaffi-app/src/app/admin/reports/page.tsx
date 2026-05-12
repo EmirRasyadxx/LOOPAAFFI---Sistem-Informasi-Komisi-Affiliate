@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppStore, mockUsers, User } from "@/lib/store";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -10,60 +10,51 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { formatIDR } from "@/lib/utils";
-
-interface AffiliateReport {
-    affiliate: User;
-    totalSales: number;
-    salesCount: number;
-    totalCommission: number;
-    paidCommission: number;
-    pendingCommission: number;
-}
+import { fetchAdminReport, DBReportRow } from "@/lib/api";
 
 export default function AdminReportsPage() {
-    const { sales, commissions, payments } = useAppStore();
-    const affiliates = mockUsers.filter((u) => u.role === "affiliate");
+    const [reportData, setReportData] = useState<DBReportRow[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const reportData: AffiliateReport[] = affiliates.map((affiliate) => {
-        const affiliateSales = sales.filter((s) => s.affiliateId === affiliate.id);
-        const affiliateCommissions = commissions.filter((c) => c.affiliateId === affiliate.id);
-        const affiliatePayments = payments.filter((p) => p.affiliateId === affiliate.id);
-
-        return {
-            affiliate,
-            totalSales: affiliateSales.reduce((acc, s) => acc + s.amount, 0),
-            salesCount: affiliateSales.length,
-            totalCommission: affiliateCommissions.reduce((acc, c) => acc + c.amount, 0),
-            paidCommission: affiliatePayments
-                .filter((p) => p.status === "paid")
-                .reduce((acc, p) => acc + p.amount, 0),
-            pendingCommission: affiliatePayments
-                .filter((p) => p.status === "pending")
-                .reduce((acc, p) => acc + p.amount, 0),
+    useEffect(() => {
+        const loadReport = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const data = await fetchAdminReport();
+                setReportData(data);
+            } catch (err: any) {
+                console.error("Gagal memuat laporan:", err);
+                setError(err.message || "Gagal memuat data laporan");
+            } finally {
+                setIsLoading(false);
+            }
         };
-    });
+        loadReport();
+    }, []);
 
     const handleExportCSV = () => {
         const headers = [
             "Affiliate Name",
             "Email",
             "Total Penjualan (IDR)",
-            "Sales Count",
+            "Jumlah Transaksi",
             "Total Komisi (IDR)",
             "Komisi Dibayar (IDR)",
             "Komisi Tertunda (IDR)",
         ];
 
         const rows = reportData.map((row) => [
-            row.affiliate.name,
-            row.affiliate.email,
-            row.totalSales.toFixed(2),
-            row.salesCount,
-            row.totalCommission.toFixed(2),
-            row.paidCommission.toFixed(2),
-            row.pendingCommission.toFixed(2),
+            row.affiliate_name,
+            row.affiliate_email,
+            row.total_sales.toFixed(2),
+            row.sales_count,
+            row.total_commission.toFixed(2),
+            row.paid_commission.toFixed(2),
+            row.pending_commission.toFixed(2),
         ]);
 
         const csvContent = [headers, ...rows]
@@ -88,7 +79,11 @@ export default function AdminReportsPage() {
                     <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Laporan</h2>
                     <p className="text-slate-500 mt-1">Ringkasan performa afiliasi. Ekspor ke CSV untuk perangkat eksternal.</p>
                 </div>
-                <Button onClick={handleExportCSV} className="bg-red-600 hover:bg-red-700 text-white gap-2">
+                <Button
+                    onClick={handleExportCSV}
+                    className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                    disabled={reportData.length === 0}
+                >
                     <Download className="w-4 h-4" /> Ekspor CSV
                 </Button>
             </div>
@@ -106,22 +101,35 @@ export default function AdminReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {reportData.length === 0 ? (
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8">
+                                    <div className="flex items-center justify-center gap-2 text-slate-500">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Memuat data laporan...
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : error ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-red-500">{error}</TableCell>
+                            </TableRow>
+                        ) : reportData.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-8 text-slate-500">Tidak ada data.</TableCell>
                             </TableRow>
                         ) : (
                             reportData.map((row) => (
-                                <TableRow key={row.affiliate.id}>
+                                <TableRow key={row.affiliate_id}>
                                     <TableCell>
-                                        <div className="font-medium text-slate-900">{row.affiliate.name}</div>
-                                        <div className="text-xs text-slate-500">{row.affiliate.email}</div>
+                                        <div className="font-medium text-slate-900">{row.affiliate_name}</div>
+                                        <div className="text-xs text-slate-500">{row.affiliate_email}</div>
                                     </TableCell>
-                                    <TableCell>{row.salesCount}</TableCell>
-                                    <TableCell>{formatIDR(row.totalSales)}</TableCell>
-                                    <TableCell className="font-bold text-slate-900">{formatIDR(row.totalCommission)}</TableCell>
-                                    <TableCell className="font-medium text-green-600">{formatIDR(row.paidCommission)}</TableCell>
-                                    <TableCell className="font-medium text-amber-600">{formatIDR(row.pendingCommission)}</TableCell>
+                                    <TableCell>{row.sales_count}</TableCell>
+                                    <TableCell>{formatIDR(row.total_sales)}</TableCell>
+                                    <TableCell className="font-bold text-slate-900">{formatIDR(row.total_commission)}</TableCell>
+                                    <TableCell className="font-medium text-green-600">{formatIDR(row.paid_commission)}</TableCell>
+                                    <TableCell className="font-medium text-amber-600">{formatIDR(row.pending_commission)}</TableCell>
                                 </TableRow>
                             ))
                         )}

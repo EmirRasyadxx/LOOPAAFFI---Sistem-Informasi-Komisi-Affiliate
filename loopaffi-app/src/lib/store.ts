@@ -35,11 +35,11 @@ export interface Payment {
 }
 
 export interface Notification {
-    id: string;
+    id: number; // Ubah ke number sesuai backend
     userId: string;
     message: string;
-    read: boolean;
-    date: string;
+    is_read: boolean; // Sesuaikan dengan backend is_read
+    created_at: string; // Sesuaikan dengan backend created_at
 }
 
 interface AppState {
@@ -53,9 +53,10 @@ interface AppState {
     darkMode: boolean;
     login: (user: User) => void;
     logout: () => void;
-    addSale: (sale: Omit<Sale, 'id'>) => void;
+    setNotifications: (notifications: Notification[]) => void;
+    addSale: (sale: Omit<Sale, 'id'>) => Promise<void>;
     markPaymentPaid: (paymentId: string) => void;
-    markNotificationRead: (id: string) => void;
+    markNotificationRead: (id: number) => void;
     convertAllToIDR: () => void;
     toggleDarkMode: () => void;
 }
@@ -77,8 +78,9 @@ export const useAppStore = create<AppState>()(
             notifications: [],
             globalCommissionRate: 0.1, // 10%
             darkMode: false,
-            login: (user) => set({ currentUser: user }),
-            logout: () => set({ currentUser: null }),
+            login: (user) => set({ currentUser: user, notifications: [] }),
+            logout: () => set({ currentUser: null, notifications: [] }),
+            setNotifications: (notifications) => set({ notifications: notifications || [] }),
             toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
             convertAllToIDR: () => {
                 set((state) => {
@@ -95,41 +97,56 @@ export const useAppStore = create<AppState>()(
                     };
                 });
             },
-            addSale: (saleData) => {
-                const id = Math.random().toString(36).substr(2, 9);
-                const newSale: Sale = { ...saleData, id };
+            addSale: async (saleData) => {
+                try {
+                    const token = localStorage.getItem("token");
+                    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080") + "/api/v1";
+                    const response = await fetch(`${apiUrl}/admin/sales`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            amount: saleData.amount,
+                            affiliate_id: saleData.affiliateId
+                        }),
+                    });
 
-                const commissionAmount = saleData.amount * get().globalCommissionRate;
-                const newCommission: Commission = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    saleId: id,
-                    affiliateId: saleData.affiliateId,
-                    amount: commissionAmount,
-                    date: saleData.date,
-                };
+                    const result = await response.json();
+                    if (result.status === "success") {
+                        const newSale = result.data;
+                        
+                        // We still need to update commissions and payments in local state 
+                        // if they don't have their own backend endpoints yet.
+                        // But NOT notifications, as backend handles that now.
 
-                const newPayment: Payment = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    affiliateId: saleData.affiliateId,
-                    amount: commissionAmount,
-                    date: saleData.date,
-                    status: 'pending',
-                };
+                        const commissionAmount = saleData.amount * get().globalCommissionRate;
+                        const newCommission: Commission = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            saleId: newSale.id,
+                            affiliateId: saleData.affiliateId,
+                            amount: commissionAmount,
+                            date: newSale.date,
+                        };
 
-                const newNotification: Notification = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    userId: saleData.affiliateId,
-                    message: `New sale recorded! You earned Rp ${(commissionAmount).toLocaleString('id-ID')}`,
-                    read: false,
-                    date: new Date().toISOString(),
-                };
+                        const newPayment: Payment = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            affiliateId: saleData.affiliateId,
+                            amount: commissionAmount,
+                            date: newSale.date,
+                            status: 'pending',
+                        };
 
-                set((state) => ({
-                    sales: [newSale, ...state.sales],
-                    commissions: [newCommission, ...state.commissions],
-                    payments: [newPayment, ...state.payments],
-                    notifications: [newNotification, ...state.notifications],
-                }));
+                        set((state) => ({
+                            sales: [newSale, ...(state.sales || [])],
+                            commissions: [newCommission, ...(state.commissions || [])],
+                            payments: [newPayment, ...(state.payments || [])],
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Gagal mencatat penjualan:", err);
+                }
             },
             markPaymentPaid: (paymentId) => {
                 set((state) => ({
@@ -140,8 +157,8 @@ export const useAppStore = create<AppState>()(
             },
             markNotificationRead: (id) => {
                 set((state) => ({
-                    notifications: state.notifications.map((n) =>
-                        n.id === id ? { ...n, read: true } : n
+                    notifications: (state.notifications || []).map((n) =>
+                        n ? (n.id === id ? { ...n, is_read: true } : n) : n
                     ),
                 }));
             },

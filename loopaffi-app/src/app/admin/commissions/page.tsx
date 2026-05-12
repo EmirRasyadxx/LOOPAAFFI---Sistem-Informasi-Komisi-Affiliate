@@ -1,7 +1,8 @@
 "use client";
 
-import { useAppStore, mockUsers } from "@/lib/store";
+import { useState, useEffect } from "react";
 import { formatIDR } from "@/lib/utils";
+import { fetchAdminCommissions, fetchAdminPayments, fetchAdminUsers, DBCommission, DBPayment, DBUser } from "@/lib/api";
 import {
     Table,
     TableBody,
@@ -10,22 +11,51 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
 
 export default function AdminCommissionsPage() {
-    const { commissions, payments } = useAppStore();
+    const [commissions, setCommissions] = useState<DBCommission[]>([]);
+    const [payments, setPayments] = useState<DBPayment[]>([]);
+    const [users, setUsers] = useState<DBUser[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const [commissionsData, paymentsData, usersData] = await Promise.all([
+                    fetchAdminCommissions(),
+                    fetchAdminPayments(),
+                    fetchAdminUsers(),
+                ]);
+                setCommissions(commissionsData);
+                setPayments(paymentsData);
+                setUsers(usersData);
+            } catch (err) {
+                console.error("Gagal memuat data komisi:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadData();
+    }, []);
 
     const totalCommissions = commissions.reduce((acc, c) => acc + c.amount, 0);
     const paidCommissions = payments.filter((p) => p.status === "paid").reduce((acc, p) => acc + p.amount, 0);
     const pendingCommissions = payments.filter((p) => p.status === "pending").reduce((acc, p) => acc + p.amount, 0);
 
-    const getAffiliateName = (id: string) => mockUsers.find((u) => u.id === id)?.name ?? "Unknown";
+    const getAffiliateName = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
 
-    // To find status of a commission we match it with the payment created for the same sale/affiliate
-    const getCommissionStatus = (saleId: string) => {
-        // In our mock logic, the payment date equals the sale date. For simplicity, we can just say if there's a pending payment for this affiliate, it's pending.
-        // Better way: we assume commission is paid if there's no pending payment for this sale. (but our mock doesn't link payment and sale directly yet, only date/amount).
-        return "completed";
-    };
+    if (isLoading) {
+        return (
+            <div className="max-w-6xl mx-auto flex items-center justify-center py-20">
+                <div className="flex items-center gap-2 text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Memuat data komisi...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
@@ -70,8 +100,8 @@ export default function AdminCommissionsPage() {
                                 <TableRow key={comm.id}>
                                     <TableCell>{new Date(comm.date).toLocaleDateString()}</TableCell>
                                     <TableCell className="font-mono text-slate-500 text-xs">{comm.id}</TableCell>
-                                    <TableCell className="font-mono text-slate-500 text-xs">{comm.saleId}</TableCell>
-                                    <TableCell className="font-medium">{getAffiliateName(comm.affiliateId)}</TableCell>
+                                    <TableCell className="font-mono text-slate-500 text-xs">{comm.sale_id}</TableCell>
+                                    <TableCell className="font-medium">{getAffiliateName(comm.affiliate_id)}</TableCell>
                                     <TableCell className="text-right font-bold text-green-600">{formatIDR(comm.amount)}</TableCell>
                                 </TableRow>
                             ))

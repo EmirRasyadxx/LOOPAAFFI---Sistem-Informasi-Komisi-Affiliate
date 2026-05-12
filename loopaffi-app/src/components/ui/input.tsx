@@ -3,9 +3,20 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({
+  className,
+  type,
+  id,
+  "data-testid": dataTestId,
+  ...props
+}: React.ComponentProps<"input"> & { "data-testid"?: string }) {
+  // Pada Base UI v1.3.0, komponen Input adalah forwardRef sederhana
+  // yang meneruskan props langsung ke Field.Control (native input).
+  // Jadi kita bisa menyertakan id dan data-testid langsung di sini.
   return (
     <InputPrimitive
+      id={id}
+      data-testid={dataTestId}
       type={type}
       data-slot="input"
       className={cn(

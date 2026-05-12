@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Infinity } from "lucide-react";
+import Link from "next/link";
+
 
 export default function LoginPage() {
     const router = useRouter();
@@ -21,16 +23,35 @@ export default function LoginPage() {
         setError("");
         setIsLoading(true);
 
-        setTimeout(() => {
-            const user = mockUsers.find((u) => u.email === email);
-            if (user && password === "password") {
+        try {
+            const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080") + "/api/v1";
+            const response = await fetch(`${apiUrl}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.status === "success") {
+                const { token, user } = result.data;
+                // Simpan token ke localStorage atau cookie jika diperlukan
+                localStorage.setItem("token", token);
+                
+                // Login ke store (pastikan store menerima struktur user yang benar)
                 login(user);
-                router.push(`/${user.role}/dashboard`);
+
+                // Redirect berdasarkan role_id (role_admin -> /admin, role_affiliate -> /affiliate)
+                const targetPath = user.role === "role_admin" ? "admin" : "affiliate";
+                router.push(`/${targetPath}/dashboard`);
             } else {
-                setError("Kredensial tidak valid. Coba admin@loopaffi.com atau john@example.com dengan kata sandi 'password'.");
-                setIsLoading(false);
+                setError(result.message || "Email atau password salah.");
             }
-        }, 500);
+        } catch (err) {
+            setError("Gagal terhubung ke server. Pastikan backend sudah menyala.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -52,9 +73,10 @@ export default function LoginPage() {
                     )}
 
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-sm font-medium text-slate-700">Alamat Email</Label>
+                        <Label htmlFor="input-email" className="text-sm font-medium text-slate-700">Alamat Email</Label>
                         <Input
-                            id="email"
+                            id="input-email"
+                            data-testid="input-email"
                             type="email"
                             placeholder="admin@loopaffi.com"
                             value={email}
@@ -65,9 +87,10 @@ export default function LoginPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="password" className="text-sm font-medium text-slate-700">Kata Sandi</Label>
+                        <Label htmlFor="input-password" className="text-sm font-medium text-slate-700">Kata Sandi</Label>
                         <Input
-                            id="password"
+                            id="input-password"
+                            data-testid="input-password"
                             type="password"
                             placeholder="••••••••"
                             value={password}
@@ -78,6 +101,8 @@ export default function LoginPage() {
                     </div>
 
                     <Button
+                        id="btn-login"
+                        data-testid="btn-login"
                         type="submit"
                         disabled={isLoading}
                         className="w-full h-11 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold"
@@ -86,14 +111,28 @@ export default function LoginPage() {
                     </Button>
                 </form>
 
+                <div className="mt-6 text-center">
+                    <p className="text-sm text-slate-500 font-medium">
+                        Belum punya akun affiliator?{" "}
+                        <Link href="/register" className="text-red-600 font-bold hover:text-red-700 underline underline-offset-4 decoration-2 decoration-red-200 hover:decoration-red-600 transition-all">
+                            Daftar di sini
+                        </Link>
+                    </p>
+                </div>
+
+
                 <div className="mt-8 pt-6 border-t border-slate-100 flex gap-4 text-center justify-center">
                     <button
+                        id="btn-quickfill-admin"
+                        data-testid="btn-quickfill-admin"
                         onClick={() => { setEmail("admin@loopaffi.com"); setPassword("password"); }}
                         className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4"
                     >
                         Gunakan Admin
                     </button>
                     <button
+                        id="btn-quickfill-affiliate"
+                        data-testid="btn-quickfill-affiliate"
                         onClick={() => { setEmail("john@example.com"); setPassword("password"); }}
                         className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4"
                     >

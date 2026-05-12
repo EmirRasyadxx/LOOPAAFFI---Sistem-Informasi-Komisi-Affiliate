@@ -1,17 +1,46 @@
 "use client";
 
-import { useAppStore, mockUsers } from "@/lib/store";
+import { useState, useEffect } from "react";
 import { formatIDR } from "@/lib/utils";
+import { fetchAdminSales, fetchAdminCommissions, fetchAdminPayments, fetchAdminUsers, DBSale, DBCommission, DBPayment, DBUser } from "@/lib/api";
 import {
     TrendingUp,
     Coins,
     ShoppingCart,
     Clock,
     CheckCircle2,
+    Loader2,
 } from "lucide-react";
 
 export default function AdminDashboard() {
-    const { sales, commissions, payments } = useAppStore();
+    const [sales, setSales] = useState<DBSale[]>([]);
+    const [commissions, setCommissions] = useState<DBCommission[]>([]);
+    const [payments, setPayments] = useState<DBPayment[]>([]);
+    const [users, setUsers] = useState<DBUser[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const [salesData, commissionsData, paymentsData, usersData] = await Promise.all([
+                    fetchAdminSales(),
+                    fetchAdminCommissions(),
+                    fetchAdminPayments(),
+                    fetchAdminUsers(),
+                ]);
+                setSales(salesData);
+                setCommissions(commissionsData);
+                setPayments(paymentsData);
+                setUsers(usersData);
+            } catch (err) {
+                console.error("Gagal memuat data dashboard:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadData();
+    }, []);
 
     const totalSalesAmount = sales.reduce((acc, s) => acc + s.amount, 0);
     const totalCommissions = commissions.reduce((acc, c) => acc + c.amount, 0);
@@ -19,7 +48,18 @@ export default function AdminDashboard() {
     const paidPaymentsTotal = payments.filter((p) => p.status === "paid").reduce((acc, p) => acc + p.amount, 0);
 
     const recentSales = [...sales].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-    const getAffiliateName = (id: string) => mockUsers.find((u) => u.id === id)?.name ?? "Unknown";
+    const getAffiliateName = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
+
+    if (isLoading) {
+        return (
+            <div className="max-w-6xl mx-auto flex items-center justify-center py-20">
+                <div className="flex items-center gap-2 text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Memuat data dashboard...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
@@ -77,7 +117,7 @@ export default function AdminDashboard() {
                                                 <CheckCircle2 className="w-4 h-4 text-green-600" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium text-slate-900">{getAffiliateName(sale.affiliateId)}</p>
+                                                <p className="text-sm font-medium text-slate-900">{getAffiliateName(sale.affiliate_id)}</p>
                                                 <p className="text-xs text-slate-500">{new Date(sale.date).toLocaleDateString()}</p>
                                             </div>
                                         </div>
