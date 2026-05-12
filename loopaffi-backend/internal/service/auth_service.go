@@ -69,9 +69,9 @@ func (s *AuthService) Register(req dto.RegisterRequest) (*dto.LoginResponse, err
 	}
 
 	// Tentukan role berdasarkan email (Hack untuk dev: jika ada kata admin, jadi admin)
-	roleID := "ROLE-002" // ID untuk Affiliate di database
+	roleID := "affiliate"
 	if strings.Contains(strings.ToLower(req.Email), "admin") {
-		roleID = "ROLE-001" // ID untuk Admin di database
+		roleID = "admin"
 	}
 
 	user := &entity.User{
