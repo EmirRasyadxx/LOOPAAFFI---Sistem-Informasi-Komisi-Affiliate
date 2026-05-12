@@ -6,7 +6,6 @@ services:
     name: loopaffi-backend
     runtime: docker
     rootDir: loopaffi-backend
-    region: singapore
     plan: free
     envVars:
       - key: GIN_MODE
@@ -29,7 +28,6 @@ services:
     name: loopaffi-frontend
     runtime: node
     rootDir: loopaffi-app
-    region: singapore
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm run start
@@ -44,5 +42,4 @@ databases:
   - name: loopaffi-db
     databaseName: loopaffi_db
     user: loopaffi_admin
-    region: singapore
     plan: free
