@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/emirrasyad/loopaffi-backend/internal/entity"
 	"github.com/emirrasyad/loopaffi-backend/internal/repository"
 	"github.com/gin-gonic/gin"
 )
