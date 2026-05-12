@@ -34,20 +34,24 @@ export default function LoginPage() {
 
             const result = await response.json();
 
-            if (response.ok && result.status === "success") {
-                const { token, user } = result.data;
+            if (response.ok && result.token) {
+                const token = result.token;
+                const user = result.user;
                 // Simpan token ke localStorage atau cookie jika diperlukan
                 localStorage.setItem("token", token);
                 
                 // Login ke store (pastikan store menerima struktur user yang benar)
                 login(user, token);
 
-                // Redirect berdasarkan role_id (role_admin -> /admin, role_affiliate -> /affiliate)
-                const targetPath = user.role === "role_admin" ? "admin" : "affiliate";
+                // Redirect berdasarkan role (RoleID atau Role.Name)
+                // Tergantung data yang direturn, biasanya role admin punya ID ROLE-001
+                const isAdmin = user.role_id === "ROLE-001" || user.Role?.id_role === "ROLE-001" || user.role === "role_admin";
+                const targetPath = isAdmin ? "admin" : "affiliate";
                 router.push(`/${targetPath}/dashboard`);
             } else {
-                setError(result.message || "Email atau password salah.");
+                setError(result.error || result.message || "Email atau password salah.");
             }
+
         } catch (err) {
             setError("Gagal terhubung ke server. Pastikan backend sudah menyala.");
         } finally {
