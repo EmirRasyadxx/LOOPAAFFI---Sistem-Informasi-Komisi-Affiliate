@@ -42,8 +42,8 @@ export default function LoginPage() {
                 // Login ke store (pastikan store menerima struktur user yang benar)
                 login(user, token);
 
-                // Redirect berdasarkan role_id (role_admin -> /admin, role_affiliate -> /affiliate)
-                const targetPath = user.role === "role_admin" ? "admin" : "affiliate";
+                // Redirect berdasarkan role (admin -> /admin, affiliate -> /affiliate)
+                const targetPath = user.role === "admin" ? "admin" : "affiliate";
                 router.push(`/${targetPath}/dashboard`);
             } else {
                 setError(result.message || "Email atau password salah.");

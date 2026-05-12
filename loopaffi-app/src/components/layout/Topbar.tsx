@@ -110,7 +110,7 @@ export function Topbar() {
                         <p className="text-xs text-slate-500 mt-1 capitalize">{currentUser.role}</p>
                     </div>
                     <div className="w-9 h-9 flex items-center justify-center rounded-full bg-red-100 text-red-700 font-bold">
-                        {currentUser.name.charAt(0)}
+                        {currentUser?.name?.charAt(0) || "U"}
                     </div>
                 </div>
             </div>

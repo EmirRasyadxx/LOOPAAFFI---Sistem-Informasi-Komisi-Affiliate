@@ -38,7 +38,7 @@ export default function AdminSalesPage() {
                     fetchAdminUsers(),
                     fetchAdminSales(),
                 ]);
-                const affiliatesOnly = usersData.filter((u) => u.role_id === "affiliate");
+                const affiliatesOnly = usersData.filter((u) => u.role === "affiliate");
                 setDbUsers(affiliatesOnly);
                 if (affiliatesOnly.length > 0 && !affiliateId) {
                     setAffiliateId(affiliatesOnly[0].id);

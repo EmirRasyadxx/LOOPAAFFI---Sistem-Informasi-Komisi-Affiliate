@@ -20,7 +20,7 @@ export interface DBUser {
     id: string;
     name: string;
     email: string;
-    role_id: string;
+    role: string;
     phone?: string;
     status?: string;
 }
