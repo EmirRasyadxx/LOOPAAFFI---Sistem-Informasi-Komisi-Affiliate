@@ -10,7 +10,7 @@ RUN apk add --no-cache git
 
 # Download dependensi lebih dulu (manfaatkan layer cache Docker)
 COPY go.mod go.sum ./
-RUN go mod tidy && go mod download
+RUN go mod download
 
 # Copy seluruh source code
 COPY . .
