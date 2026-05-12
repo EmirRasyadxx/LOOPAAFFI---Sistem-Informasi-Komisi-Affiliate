@@ -9,7 +9,7 @@ node_modules/
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.js
 .next/
@@ -20,7 +20,7 @@ node_modules/
 
 # misc
 .DS_Store
-*.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -38,7 +38,7 @@ yarn-error.log*
 # vercel
 .vercel
 
-# typescript
+# Typescript
 *.tsbuildinfo
 next-env.d.ts
 

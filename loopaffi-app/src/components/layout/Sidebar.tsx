@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
+import { removeToken } from "@/lib/api";
 import {
     BarChart3,
     ShoppingCart,
@@ -40,6 +41,7 @@ export function Sidebar() {
     const links = isAdmin ? adminLinks : affiliateLinks;
 
     const handleLogout = () => {
+        removeToken(); // Hapus JWT token dari localStorage
         logout();
         router.push("/login");
     };

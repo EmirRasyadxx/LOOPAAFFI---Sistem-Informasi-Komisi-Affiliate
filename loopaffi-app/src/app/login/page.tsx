@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore, mockUsers } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
+import { apiLogin } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ export default function LoginPage() {
     const { login } = useAppStore();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -56,10 +58,16 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
-            <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            {/* Background decoration */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute -top-40 -right-40 w-80 h-80 bg-red-100 rounded-full blur-3xl opacity-40" />
+                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-100 rounded-full blur-3xl opacity-40" />
+            </div>
+
+            <div className="relative w-full max-w-md bg-white p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-12 h-12 bg-red-600 text-white rounded-xl flex items-center justify-center mb-4 shadow-sm">
-                        <Infinity className="w-7 h-7" />
+                    <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-700 text-white rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-red-500/25">
+                        <Infinity className="w-8 h-8" />
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900">Selamat Datang di LoopAffi</h1>
                     <p className="text-slate-500 text-sm mt-1">Masuk untuk mengelola afiliasi Anda</p>
@@ -67,8 +75,9 @@ export default function LoginPage() {
 
                 <form onSubmit={handleLogin} className="space-y-5">
                     {error && (
-                        <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-100">
-                            {error}
+                        <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-100 flex items-start gap-2">
+                            <span className="shrink-0 mt-0.5">⚠️</span>
+                            <span>{error}</span>
                         </div>
                     )}
 
@@ -105,9 +114,14 @@ export default function LoginPage() {
                         data-testid="btn-login"
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-11 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold"
+                        className="w-full h-11 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm font-semibold shadow-lg shadow-red-500/25 transition-all duration-200"
                     >
-                        {isLoading ? "Sedang masuk..." : "Masuk"}
+                        {isLoading ? (
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Sedang masuk...
+                            </span>
+                        ) : "Masuk"}
                     </Button>
                 </form>
 
@@ -126,7 +140,7 @@ export default function LoginPage() {
                         id="btn-quickfill-admin"
                         data-testid="btn-quickfill-admin"
                         onClick={() => { setEmail("admin@loopaffi.com"); setPassword("password"); }}
-                        className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4"
+                        className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4 transition-colors"
                     >
                         Gunakan Admin
                     </button>
@@ -134,7 +148,7 @@ export default function LoginPage() {
                         id="btn-quickfill-affiliate"
                         data-testid="btn-quickfill-affiliate"
                         onClick={() => { setEmail("john@example.com"); setPassword("password"); }}
-                        className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4"
+                        className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4 transition-colors"
                     >
                         Gunakan Afiliasi
                     </button>

@@ -44,6 +44,7 @@ export interface Notification {
 
 interface AppState {
     currentUser: User | null;
+    token: string | null;
     users: User[];
     sales: Sale[];
     commissions: Commission[];
@@ -51,7 +52,7 @@ interface AppState {
     notifications: Notification[];
     globalCommissionRate: number;
     darkMode: boolean;
-    login: (user: User) => void;
+    login: (user: User, token: string) => void;
     logout: () => void;
     setNotifications: (notifications: Notification[]) => void;
     addSale: (sale: Omit<Sale, 'id'>) => Promise<void>;
@@ -71,6 +72,7 @@ export const useAppStore = create<AppState>()(
     persist(
         (set, get) => ({
             currentUser: null,
+            token: null,
             users: mockUsers,
             sales: [],
             commissions: [],
