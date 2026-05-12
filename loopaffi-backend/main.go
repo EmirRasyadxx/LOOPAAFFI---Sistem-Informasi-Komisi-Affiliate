@@ -1,48 +1,57 @@
 package main
 
 import (
-	"backend/config"
-	"backend/models"
-	"backend/routes"
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/emirrasyad/loopaffi-backend/internal/config"
+	"github.com/emirrasyad/loopaffi-backend/internal/database"
+	"github.com/emirrasyad/loopaffi-backend/internal/handler"
+	"github.com/emirrasyad/loopaffi-backend/internal/repository"
+	"github.com/emirrasyad/loopaffi-backend/internal/routes"
+	"github.com/emirrasyad/loopaffi-backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// 1. Inisialisasi Koneksi Database PostgreSQL
-	config.ConnectDatabase()
-
-	// 2. Auto-Migrate Database (Genap 10 Tabel sesuai Class Diagram & ERD)
-	// GORM akan otomatis membuat tabel jika belum ada atau memperbarui strukturnya
-	err := config.DB.AutoMigrate(
-		// Tabel Master / Referensi
-		&models.Role{},
-		&models.User{},
-		&models.Product{},
-		&models.PaymentMethod{},
-		&models.CommissionSetting{},
-
-		// Tabel Transaksional
-		&models.Sale{},
-		&models.SaleItem{},
-		&models.Commission{},
-		&models.Payment{},
-		&models.Notification{},
-	)
-
+	// 1. Load config
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Println("Gagal melakukan migrasi database:", err)
-	} else {
-		fmt.Println("Migrasi 10 tabel sistem LoopAffi berhasil dilakukan!")
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// 3. Setup Framework Gin
-	router := gin.Default()
+	// 2. Connect to Database
+	db, err := database.NewPostgresDB(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
 
-	// 4. CORS Middleware — agar frontend Next.js bisa akses API
-	router.Use(func(c *gin.Context) {
+	// 3. Initialize Repositories
+	userRepo := repository.NewUserRepository(db)
+	notifRepo := repository.NewNotificationRepository(db)
+	saleRepo := repository.NewSaleRepository(db)
+	commissionRepo := repository.NewCommissionRepository(db)
+	paymentRepo := repository.NewPaymentRepository(db)
+
+	// 4. Initialize Services
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+
+	// 5. Initialize Handlers
+	authHandler := handler.NewAuthHandler(authService)
+	userHandler := handler.NewUserHandler(userRepo)
+	notifHandler := handler.NewNotificationHandler(notifRepo)
+	saleHandler := handler.NewSaleHandler(saleRepo, notifRepo, commissionRepo, paymentRepo)
+	commissionHandler := handler.NewCommissionHandler(commissionRepo)
+	paymentHandler := handler.NewPaymentHandler(paymentRepo)
+	reportHandler := handler.NewReportHandler(userRepo, saleRepo, commissionRepo, paymentRepo)
+
+	// 6. Setup Gin Router
+	engine := gin.Default()
+
+	// CORS Middleware
+	engine.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
@@ -56,14 +65,30 @@ func main() {
 		c.Next()
 	})
 
-	// 5. Daftarkan Routes API (Endpoint untuk Postman/Frontend)
-	routes.SetupRoutes(router)
+	// 7. Setup Routes
+	router := routes.NewRouter(
+		engine,
+		authHandler,
+		userHandler,
+		notifHandler,
+		saleHandler,
+		commissionHandler,
+		paymentHandler,
+		reportHandler,
+		cfg.JWTSecret,
+	)
+	router.Setup()
 
-	// 6. Jalankan Server (Ambil port dari os.Getenv)
-	port := os.Getenv("PORT")
+	// 8. Run Server
+	port := cfg.AppPort
+	if port == "" {
+		port = os.Getenv("PORT")
+	}
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Printf("Server backend LoopAffi siap digunakan di http://localhost:%s\n", port)
-	router.Run(":" + port)
+	fmt.Printf("Server backend LoopAffi siap digunakan di port %s\n", port)
+	if err := engine.Run(":" + port); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
