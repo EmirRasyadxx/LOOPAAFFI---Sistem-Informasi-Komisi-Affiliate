@@ -32,7 +32,7 @@ Tujuan utama dari pengembangan sistem ini adalah meningkatkan efisiensi operasio
 
 ### DFD Level 1
 
-<img src="asset/DFD 1.drawio.png" alt="DFD Level 1" width="100%">
+<img src="asset/DFD 1.png" alt="DFD Level 1" width="100%">
 
 ---
 
