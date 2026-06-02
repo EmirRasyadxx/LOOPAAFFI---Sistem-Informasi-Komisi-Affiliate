@@ -22,7 +22,7 @@ type LoginResponse struct {
 
 type ForgotPasswordRequest struct {
 	Email       string `json:"email" binding:"required,email"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
+	NewPassword string `json:"new_password" binding:"required"`
 }
 
 // UserProfile is a safe user representation (no password)

@@ -86,7 +86,7 @@ export default function LoginPage() {
                             id="input-email"
                             data-testid="input-email"
                             type="email"
-                            placeholder="admin@loopaffi.com"
+                            placeholder="contoh@email.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -142,25 +142,6 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-
-                <div className="mt-8 pt-6 border-t border-slate-100 flex gap-4 text-center justify-center">
-                    <button
-                        id="btn-quickfill-admin"
-                        data-testid="btn-quickfill-admin"
-                        onClick={() => { setEmail("admin@loopaffi.com"); setPassword("password"); }}
-                        className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4 transition-colors"
-                    >
-                        Gunakan Admin
-                    </button>
-                    <button
-                        id="btn-quickfill-affiliate"
-                        data-testid="btn-quickfill-affiliate"
-                        onClick={() => { setEmail("john@example.com"); setPassword("password"); }}
-                        className="text-xs text-slate-500 hover:text-red-600 underline underline-offset-4 transition-colors"
-                    >
-                        Gunakan Afiliasi
-                    </button>
-                </div>
             </div>
         </div>
     );
